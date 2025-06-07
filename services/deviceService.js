@@ -20,7 +20,7 @@ module.exports = {
     } while (cursor !== '0' && foundUserId === null);
 
     if (!foundUserId) {
-      throw new Error('Invalid or expired connection code');
+      return false;
     }
 
     // 2) remove any existing device mapping for this user

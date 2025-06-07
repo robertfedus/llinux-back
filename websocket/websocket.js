@@ -37,7 +37,12 @@ const websocket = (server) => {
       if (data.type === 'register') {
         deviceId = data.deviceId;
         
-        await deviceService.registerDevice(deviceId, ws.clientId, data.connectionCode);
+        const registerDeviceResult = await deviceService.registerDevice(deviceId, ws.clientId, data.connectionCode);
+        
+
+        if (!registerDeviceResult) {
+          return ws.send(JSON.stringify({ type: 'registered', success: false }));
+        }
         return ws.send(JSON.stringify({ type: 'registered', success: true }));
       }
       // Handle other message types
