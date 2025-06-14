@@ -42,7 +42,6 @@ exports.deleteApiKeys = async (req, res) => {
 
   try {
     if (chatgpt === 'true' && deepseek === 'true') {
-      // Delete both fields (or full row if desired)
       await pool.query(`UPDATE users_api_keys SET chatgpt_key = NULL, deepseek_key = NULL WHERE user_id = $1`, [userId]);
     } else if (chatgpt === 'true') {
       await pool.query(`UPDATE users_api_keys SET chatgpt_key = NULL WHERE user_id = $1`, [userId]);

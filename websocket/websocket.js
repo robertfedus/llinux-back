@@ -7,7 +7,7 @@ const { handleWebSocketMessage } = require('./../controllers/deviceController');
 const websocket = (server) => {
   const wss = new WebSocket.Server({ server });
 
-  // 1) Subscribe to the single “ws:commands” channel
+  // Subscribe to the single “ws:commands” channel
   const sub = redis.duplicate();
   sub.subscribe('ws:commands');
   sub.on('message', (channel, message) => {
@@ -20,7 +20,7 @@ const websocket = (server) => {
     });
   });
 
-  // 2) On every new connection, assign and attach a clientId
+  // On every new connection, assign and attach a clientId
   wss.on('connection', (ws) => {
     ws.clientId = uuidv4();
     let deviceId = null;

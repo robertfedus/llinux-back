@@ -4,12 +4,10 @@ const { pool } = require('../db/db');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// Register a new user
 const register = async (req, res) => {
   const { name, email, password } = req.body;
   
   try {
-    // Check if user already exists
     const userExists = await pool.query(
       'SELECT * FROM users WHERE email = $1',
       [email]
@@ -19,21 +17,17 @@ const register = async (req, res) => {
       return res.status(400).json({ msg: 'User already exists' });
     }
     
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     
-    // Create user
     const newUser = await pool.query(
       'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
       [name, email, hashedPassword]
     );
     
-    // Create and return JWT token
     const token = jwt.sign(
       { id: newUser.rows[0].id },
       JWT_SECRET,
-      // { expiresIn: '1h' }
     );
     
     res.status(201).json({
@@ -51,12 +45,10 @@ const register = async (req, res) => {
   }
 };
 
-// Login user
 const login = async (req, res) => {
   const { email, password } = req.body;
   
   try {
-    // Check if user exists
     const user = await pool.query(
       'SELECT * FROM users WHERE email = $1',
       [email]
@@ -66,18 +58,15 @@ const login = async (req, res) => {
       return res.status(400).json({ msg: 'Invalid credentials' });
     }
     
-    // Validate password
     const isMatch = await bcrypt.compare(password, user.rows[0].password);
     
     if (!isMatch) {
       return res.status(400).json({ msg: 'Invalid credentials' });
     }
     
-    // Create and return JWT token
     const token = jwt.sign(
       { id: user.rows[0].id },
       JWT_SECRET,
-      // { expiresIn: '1h' }
     );
     
     res.json({
@@ -95,7 +84,6 @@ const login = async (req, res) => {
   }
 };
 
-// Get user data
 const getUserData = async (req, res) => {
   try {
     const user = await pool.query(

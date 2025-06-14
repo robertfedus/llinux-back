@@ -4,40 +4,38 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const bodyParser = require('body-parser');
+const rateLimit = require('express-rate-limit');
 
-// Import routes
 const deviceRoutes = require('./routes/deviceRoutes');
 const authRoutes = require('./routes/authRoutes');
 const apiKeysRoutes = require('./routes/apiKeysRoutes');
 
-// Import WebSocket setup
 const setupWebSocket = require('./websocket/websocket');
 
-// Create Express app and HTTP server
 const app = express();
 const server = http.createServer(app);
 
-// Setup WebSocket server
 const wss = setupWebSocket(server);
 
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true // Return rate limit info in the `RateLimit-*` headers
+});
+
 // Middleware
+app.use(limiter);
 app.use(cors());
 app.use(bodyParser.json());
 
 // Routes
-app.get('/', (req, res) => {
-  res.send('Command Execution Server');
-});
-
-// Apply API routes
 app.use('/api/device/', deviceRoutes);
 app.use('/api/', authRoutes);
 app.use('/api/api-keys', apiKeysRoutes);
 
-// Start the server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-module.exports = server; // Export for testing purposes
+module.exports = server;

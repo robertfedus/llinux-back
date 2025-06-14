@@ -1,30 +1,21 @@
-const { pool } = require('../db/db');
 const { v4: uuidv4 } = require('uuid');
 const redis = require('../db/redisClient');
 const deviceService = require('../services/deviceService');
 
-/**
- * Send commands to a specific device and wait for results via Redis pub/sub
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- */
 const sendCommands = async (req, res) => {
   const { deviceId, commands } = req.body;
   const userId = req.user.id;
 
-  // Validate input
   if (!deviceId || !commands || !Array.isArray(commands)) {
     return res.status(400).json({ error: 'Valid deviceId and commands array are required' });
   }
 
   try {
-    // Verify device connection status
     const isConnected = await deviceService.isUserConnected(userId);
     if (!isConnected) {
       return res.status(404).json({ error: 'Device not connected' });
     }
 
-    // Get client ID for WebSocket routing
     const clientId = await deviceService.getUserClientId(userId);
     if (!clientId) {
       return res.status(404).json({ error: 'Device connection information not found' });
@@ -39,7 +30,6 @@ const sendCommands = async (req, res) => {
       const subscriber = redis.duplicate();
       let timeoutId;
 
-      // Set up subscription first
       subscriber.subscribe(commandChannel, async (subscribeErr) => {
         if (subscribeErr) {
           subscriber.quit();
@@ -47,14 +37,12 @@ const sendCommands = async (req, res) => {
         }
 
         try {
-          // Send commands only after subscription is confirmed
           await deviceService.publishCommand(clientId, {
             type: 'execute',
             commandId,
             commands
           });
 
-          // Start timeout AFTER commands are sent
           timeoutId = setTimeout(() => {
             subscriber.unsubscribe(commandChannel);
             subscriber.quit();
@@ -66,13 +54,11 @@ const sendCommands = async (req, res) => {
         }
       });
 
-      // Handle incoming results
       subscriber.on('message', (channel, message) => {
         if (channel === commandChannel) {
           try {
             const resultData = JSON.parse(message);
             
-            // Validate result structure
             if (typeof resultData.index !== 'number' || 
                 resultData.index < 0 || 
                 resultData.index >= commands.length) {
@@ -80,7 +66,6 @@ const sendCommands = async (req, res) => {
               return;
             }
 
-            // Store result in correct position
             results[resultData.index] = {
               command: resultData.command,
               output: resultData.output,
@@ -89,7 +74,6 @@ const sendCommands = async (req, res) => {
 
             receivedResults++;
 
-            // Check completion
             if (receivedResults === commands.length) {
               clearTimeout(timeoutId);
               subscriber.unsubscribe(commandChannel);
@@ -102,7 +86,6 @@ const sendCommands = async (req, res) => {
         }
       });
 
-      // Handle subscription errors
       subscriber.on('error', (err) => {
         clearTimeout(timeoutId);
         subscriber.quit();
@@ -110,7 +93,6 @@ const sendCommands = async (req, res) => {
       });
     });
 
-    // Wait for results or timeout
     try {
       const commandResults = await resultPromise;
       res.json({
@@ -156,13 +138,11 @@ const getSystemInformation = async (req, res) => {
       return res.status(400).json({ error: 'Missing user ID' });
     }
 
-    // Find the key matching ws:userId:*
     const keys = await redis.keys(`ws:${userId}:*`);
     if (!keys || keys.length === 0) {
       return res.status(404).json({ error: 'No device found for user' });
     }
 
-    // Extract deviceId from the key (assuming one match)
     const keyParts = keys[0].split(':');
     const deviceId = keyParts[2];
 
@@ -170,7 +150,6 @@ const getSystemInformation = async (req, res) => {
       return res.status(500).json({ error: 'Device ID could not be parsed' });
     }
 
-    // Get system info for the device
     const systemData = await redis.get(`system:${deviceId}`);
     if (!systemData) {
       return res.status(404).json({ error: 'System information not found' });
@@ -191,12 +170,10 @@ const getConnectionCode = async (req, res) => {
     const redisKey = `user:${userId}:connection_code`;
     const now = new Date();
 
-    // Attempt to retrieve existing code and its TTL
     const existingCode = await redis.get(redisKey);
     const ttl = await redis.ttl(redisKey);
 
     if (existingCode && ttl > 0) {
-      // Calculate expiresAt from TTL
       const expiresAt = new Date(now.getTime() + ttl * 1000).toISOString();
       return res.status(200).json({
         msg: 'Connection code exists',
@@ -205,16 +182,13 @@ const getConnectionCode = async (req, res) => {
       });
     }
 
-    // Generate a new code
     const newCode = uuidv4();
-    const expireSeconds = 3 * 60; // 3 minutes
+    const expireSeconds = 3 * 60;
 
-    // Store new code with expiration
     await redis.setex(redisKey, expireSeconds, newCode);
 
     const expiresAt = new Date(now.getTime() + expireSeconds * 1000).toISOString();
 
-    // Determine response status and message
     const status = existingCode ? 200 : 201;
     const msg = existingCode ? 'Code refreshed' : 'New connection code';
 
@@ -238,7 +212,7 @@ const saveSystemInformation = async (info) => {
 
   try {
     await redis.set(key, JSON.stringify(info));
-    console.log(`System information saved/updated for key: ${key}`);
+    // console.log(`System information saved/updated for key: ${key}`);
   } catch (err) {
     console.error('Error saving system information to Redis:', err);
   }
@@ -250,7 +224,6 @@ const handleWebSocketMessage = (ws, message) => {
     
     if (data.type === 'command_result') {
       const { commandId } = data;
-      // Publish directly to Redis without additional handlers
       redis.publish(`cmd:results:${commandId}`, JSON.stringify(data));
     }
 

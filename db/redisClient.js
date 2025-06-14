@@ -5,7 +5,7 @@ const redis = new Redis({
   port: process.env.REDIS_PORT,
   username: process.env.REDIS_USER,
   password: process.env.REDIS_PASSWORD,
-  // tls: {} // uncomment if you're using Redis over TLS
+  // tls: {}
 });
 
 module.exports = redis;

@@ -52,13 +52,18 @@ module.exports = {
         console.log(`Deleted keys: ${keys.join(', ')}`);
       }
     } while (cursor !== '0');
+
+    const key = `system:${deviceId}`;
+    try {
+      const result = await redis.del(key);
+      
+      return result;
+    } catch (err) {
+      console.error(`Error deleting key ${key}:`, err);
+      throw err;
+    }
   },
 
-  /**
-   * Checks if the given user has any active WebSocket connection.
-   * @param {string} userId
-   * @returns {Promise<boolean>}
-   */
   isUserConnected: async (userId) => {
     let cursor = '0';
     do {
@@ -72,11 +77,6 @@ module.exports = {
     return false;
   },
 
-  /**
-   * Returns the first clientId found for this user’s active connection, or null.
-   * @param {string} userId
-   * @returns {Promise<string|null>}
-   */
   getUserClientId: async (userId) => {
     let cursor = '0';
     do {

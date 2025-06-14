@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const apiKeysController = require('../controllers/apiKeysController');
-const auth = require('../middleware/auth'); // JWT middleware
+const auth = require('../middleware/auth');
 
 router.use(auth);
 
