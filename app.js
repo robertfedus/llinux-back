@@ -26,7 +26,6 @@ const limiter = rateLimit({
 // Middleware
 app.use(limiter);
 app.use(cors());
-app.options('*', cors());
 app.use(bodyParser.json());
 
 // Routes
